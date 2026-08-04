@@ -55,3 +55,26 @@ def basic_preprocessing(df):
     df = df.replace({"": pd.NA, " ": pd.NA})
     df["NUMBER_OFFERS"] = pd.to_numeric(df["NUMBER_OFFERS"], errors="coerce")
     return df
+
+
+# ---------------------------------------------------------
+# 5. Check basic information
+# ---------------------------------------------------------
+
+def overview(df):
+    '''
+    Create an overview of some key properties of a DataFrame's columns.
+    VARs
+        df: The DataFrame to be considered
+    RETURNS:
+        None
+    '''
+    df = df.copy()
+    display(pd.DataFrame({'dtype': df.dtypes,  
+                          'total': df.count(),  
+                          'missing_n': df.isna().sum(),
+                          'missing_%': df.isna().mean()*100, 
+                          'uniques_n': df.nunique(), 
+                          'uniques': [df[col].unique() for col in df.columns]   
+                         }))
+    return df
