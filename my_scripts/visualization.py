@@ -29,81 +29,15 @@ def _save_fig(save, name):
 
 
 # ---------------------------------------------------------
-# 1. Histogram plots for numeric columns
+# 1. Target distribution: failed / risk / safe tenders
 # ---------------------------------------------------------
 
-def plot_histograms(df, cols, bins=50, save=False):
-    """
-    Plots histograms for selected numeric columns.
-    Useful for understanding distributions and skewness.
-    """
-    for col in cols:
-        plt.figure(figsize=(8, 5))
-        sns.histplot(df[col], bins=bins, kde=True)
-        plt.title(f"Distribution of {col}")
-        plt.xlabel(col)
-        plt.ylabel("Count")
-        plt.tight_layout()
-
-        _save_fig(save, f"hist_{col}")
-        plt.show()
-
-
-# ---------------------------------------------------------
-# 2. Bar chart for top categories
-# ---------------------------------------------------------
-
-def plot_bar_top_categories(df, col, top_n=20, save=False):
-    """
-    Plots a bar chart of the top N most frequent categories.
-    Useful for categorical EDA.
-    """
-    counts = df[col].value_counts().head(top_n)
-
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=counts.values, y=counts.index)
-    plt.title(f"Top {top_n} categories in {col}")
-    plt.xlabel("Count")
-    plt.ylabel(col)
-    plt.tight_layout()
-
-    _save_fig(save, f"bar_top_{col}")
-    plt.show()
-
-
-# ---------------------------------------------------------
-# 3. Correlation matrix
-# ---------------------------------------------------------
-
-def plot_correlation_matrix(df, cols=None, save=False):
-    """
-    Plots a correlation matrix for numeric columns.
-    If cols is provided, only those columns are used.
-    """
-    if cols:
-        df_corr = df[cols].corr()
-    else:
-        df_corr = df.select_dtypes(include="number").corr()
-
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(df_corr, annot=False, cmap="coolwarm")
-    plt.title("Correlation Matrix")
-    plt.tight_layout()
-
-    _save_fig(save, "correlation_matrix")
-    plt.show()
-
-
-# ---------------------------------------------------------
-# 4. Target distribution: failed / risk / safe tenders
-# ---------------------------------------------------------
-
-def plot_target_distribution(df, save=False):
+def plot_target_distribution(df, save=False, suffix=""):
     """
     Plots a pie chart showing the distribution of tenders:
-    - failed (0–1 offers)   - red
-    - risk zone (2 offers)  - yellow/orange
-    - safe (>=3 offers)     - green
+    - failed (0–1 offers)   → red
+    - risk zone (2 offers)  → yellow/orange
+    - safe (>=3 offers)     → green
     Labels include both percentage and absolute counts.
     """
 
@@ -137,5 +71,54 @@ def plot_target_distribution(df, save=False):
     plt.title("Tender Outcome Distribution", fontsize=14)
     plt.tight_layout()
 
-    _save_fig(save, "target_distribution_pie")
+    # add suffix if provided
+    filename = "target_distribution_pie"
+    if suffix:
+        filename += f"_{suffix}"
+
+    _save_fig(save, filename)
+    plt.show()
+
+
+# ---------------------------------------------------------
+# 2. Correlation matrix
+# ---------------------------------------------------------
+
+def plot_correlation_matrix(df, cols=None, save=False):
+    """
+    Plots a correlation matrix for numeric columns.
+    If cols is provided, only those columns are used.
+    """
+    if cols:
+        df_corr = df[cols].corr()
+    else:
+        df_corr = df.select_dtypes(include="number").corr()
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(df_corr, annot=False, cmap="coolwarm")
+    plt.title("Correlation Matrix")
+    plt.tight_layout()
+
+    _save_fig(save, "correlation_matrix")
+    plt.show()
+
+
+
+# ---------------------------------------------------------
+# 3. Top N countries
+# ---------------------------------------------------------
+
+def plot_bar_top_categories(df, col, top_n=20, save=False):
+    """Bar chart of top N categories."""
+
+    counts = df[col].value_counts().head(top_n)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=counts.values, y=counts.index)
+    plt.title(f"Top {top_n} categories in {col}")
+    plt.xlabel("Count")
+    plt.ylabel(col)
+    plt.tight_layout()
+
+    _save_fig(save, f"bar_top_{col}")
     plt.show()
