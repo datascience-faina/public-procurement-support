@@ -1,80 +1,100 @@
+
 import pandas as pd
-
+from pathlib import Path
 
 # ---------------------------------------------------------
-# 1. Load single year
+# 1. Load a single year file (all columns)
 # ---------------------------------------------------------
 
-def load_single_year(path, year, usecols=None):
+def load_single_year(data_dir, year):
     """
-    Loads a single TED file in the format Export_OpenDataCAN_yearXXXX.csv
-    with selected columns.
+    Loads one TED dataset file with ALL columns.
+    Adds a YEAR column.
     """
-    file = f"{path}/Export_OpenDataCAN_year{year}.csv"
-    df = pd.read_csv(file, sep=",", low_memory=False, usecols=usecols)
+    file = Path(data_dir) / f"Export_OpenDataCAN_year{year}.csv"
+    df = pd.read_csv(file, sep=",", low_memory=False)
     df["YEAR"] = year
     return df
 
 
 # ---------------------------------------------------------
-# 2. Load all year
+# 2. Load multiple years and combine
 # ---------------------------------------------------------
 
-def load_years(path, years, usecols=None):
+def load_years(data_dir, years):
     """
-    Loads data for several years and combines it into a single DataFrame.
+    Loads multiple years of TED data and concatenates them.
     """
     frames = []
     for y in years:
-        df_y = load_single_year(path, y, usecols)
+        df_y = load_single_year(data_dir, y)
         frames.append(df_y)
     return pd.concat(frames, ignore_index=True)
 
 
 # ---------------------------------------------------------
-# 3. Filter by Germany only
-# ---------------------------------------------------------
-
-def filter_germany(df):
-    """
-    Returns only tenders from Germany.
-    """
-    return df[df["ISO_COUNTRY_CODE"] == "DE"]
-
-
-# ---------------------------------------------------------
-# 4. Preprocessing steps
+# 3. Basic preprocessing
 # ---------------------------------------------------------
 
 def basic_preprocessing(df):
     """
     Minimal preprocessing:
-    - converting NUMBER_OFFERS to numeric format
-    - replacing empty values ​​with NaN
+    - replace empty strings with NaN
+    - convert NUMBER_OFFERS to numeric
     """
     df = df.replace({"": pd.NA, " ": pd.NA})
-    df["NUMBER_OFFERS"] = pd.to_numeric(df["NUMBER_OFFERS"], errors="coerce")
+    if "NUMBER_OFFERS" in df.columns:
+        df["NUMBER_OFFERS"] = pd.to_numeric(df["NUMBER_OFFERS"], errors="coerce")
     return df
 
 
 # ---------------------------------------------------------
-# 5. Check basic information
+# 4. Filter Germany only
+# ---------------------------------------------------------
+
+def filter_germany(df):
+    """
+    Filters rows where ISO_COUNTRY_CODE == 'DE'.
+    """
+    if "ISO_COUNTRY_CODE" not in df.columns:
+        raise KeyError("Column ISO_COUNTRY_CODE not found in dataset.")
+    return df[df["ISO_COUNTRY_CODE"] == "DE"]
+
+
+# ---------------------------------------------------------
+# 5. Overview of dataset
 # ---------------------------------------------------------
 
 def overview(df):
-    '''
-    Create an overview of some key properties of a DataFrame's columns.
-    VARs
-        df: The DataFrame to be considered
-    RETURNS:
-        None
-    '''
-    df = df.copy()
-    display(pd.DataFrame({'dtype': df.dtypes,  
-                          'total': df.count(),  
-                          'missing_n': df.isna().sum(),
-                          'missing_%': df.isna().mean()*100, 
-                          'uniques_n': df.nunique(), 
-                          'uniques': [df[col].unique() for col in df.columns]   
-                         }))
-    return df
+    """
+    Displays an overview of key column properties:
+    - dtype
+    - total non-null
+    - missing count
+    - missing %
+    - number of unique values
+    - list of unique values
+    """
+    df_copy = df.copy()
+    summary = pd.DataFrame({
+        "dtype": df_copy.dtypes,
+        "total": df_copy.count(),
+        "missing_n": df_copy.isna().sum(),
+        "missing_%": df_copy.isna().mean() * 100,
+        "uniques_n": df_copy.nunique(),
+        "uniques": [df_copy[col].unique() for col in df_copy.columns]
+    })
+    display(summary)
+
+
+
+
+
+
+
+
+
+
+
+
+
