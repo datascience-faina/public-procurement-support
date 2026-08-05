@@ -92,6 +92,15 @@ def convert_dates(df, cols):
             df[col] = pd.to_datetime(df[col], errors="coerce", format="mixed")
     return df
 
+# ---------------------------------------------------------
+# Categorical conversion
+# ---------------------------------------------------------
+
+def convert_to_string(df, cols):
+    for col in cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+    return df
 
 # ---------------------------------------------------------
 # Clean categorical fields
@@ -136,10 +145,19 @@ def preprocess(df):
     # 4. Date conversion
     df = convert_dates(df, ["DT_DISPATCH", "DT_AWARD"])
 
-    # 5. Clean categorical
+    # 5. Categorical conversion
+    df = convert_to_string(df, [
+        "ISO_COUNTRY_CODE","CAE_TYPE", "B_AWARDED_BY_CENTRAL_BODY",
+        "TYPE_OF_CONTRACT", "TAL_LOCATION_NUTS", "B_DYN_PURCH_SYST", "CPV",
+        "ID_LOT", "B_EU_FUNDS", "TOP_TYPE", "B_ACCELERATED", "CRIT_CODE",
+        "B_ELECTRONIC_AUCTION", "B_AWARDED_TO_A_GROUP", "WIN_COUNTRY_CODE",
+        "B_CONTRACTOR_SME", "B_SUBCONTRACTED"
+    ])
+
+    # 6. Clean categorical
     df = clean_categorical(df)
 
-    # 6. Replace NaN in categorical with "Unknown"
+    # 7. Replace NaN in categorical with "Unknown"
     df = fill_categorical_unknown(df)
 
    
