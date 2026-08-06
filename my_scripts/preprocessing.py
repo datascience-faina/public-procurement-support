@@ -32,7 +32,7 @@ def drop_columns(df):
         "CAE_GPA_ANNEX",
         "GPA_COVERAGE", "ISO_COUNTRY_CODE_GPA", "ISO_COUNTRY_CODE_ALL", "B_GPA",
         "VALUE_EURO_FIN_1", "VALUE_EURO_FIN_2", "AWARD_VALUE_EURO_FIN_1",
-        "CRIT_PRICE_WEIGHT", "CRIT_CRITERIA", "CRIT_WEIGHTS",
+        "CRIT_PRICE_WEIGHT", "CRIT_WEIGHTS",
         "ADDITIONAL_CPVS",
         "B_MULTIPLE_CAE", "B_MULTIPLE_COUNTRY", "B_ON_BEHALF",
         "B_INVOLVES_JOINT_PROCUREMENT",
@@ -45,7 +45,6 @@ def drop_columns(df):
     irrelevant_cols = [
         "ID_NOTICE_CAN", "ID_AWARD", "ID_LOT_AWARDED",
         "CONTRACT_NUMBER",
-        "TITLE",
         "INFO_ON_NON_AWARD", "INFO_UNPUBLISHED",
         "MAIN_ACTIVITY", "EU_INST_CODE"
     ]
