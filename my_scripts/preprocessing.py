@@ -32,7 +32,6 @@ def drop_columns(df):
         "CAE_GPA_ANNEX",
         "GPA_COVERAGE", "ISO_COUNTRY_CODE_GPA", "ISO_COUNTRY_CODE_ALL", "B_GPA",
         "VALUE_EURO_FIN_1", "VALUE_EURO_FIN_2", "AWARD_VALUE_EURO_FIN_1",
-        "CRIT_PRICE_WEIGHT", "CRIT_WEIGHTS",
         "ADDITIONAL_CPVS",
         "B_MULTIPLE_CAE", "B_MULTIPLE_COUNTRY", "B_ON_BEHALF",
         "B_INVOLVES_JOINT_PROCUREMENT",
@@ -92,7 +91,7 @@ def convert_dates(df, cols):
     return df
 
 # ---------------------------------------------------------
-# Categorical conversion
+# Categorical & text conversion
 # ---------------------------------------------------------
 
 def convert_to_string(df, cols):
@@ -138,7 +137,7 @@ def preprocess(df):
     # 3. Numeric conversion
     df = convert_numeric(df, [
         "VALUE_EURO", "AWARD_VALUE_EURO", "AWARD_EST_VALUE_EURO",
-        "NUMBER_OFFERS", "LOTS_NUMBER"
+        "NUMBER_OFFERS", "LOTS_NUMBER", "CRIT_PRICE_WEIGHT"
     ])
 
     # 4. Date conversion
@@ -150,7 +149,7 @@ def preprocess(df):
         "TYPE_OF_CONTRACT", "TAL_LOCATION_NUTS", "B_DYN_PURCH_SYST", "CPV",
         "ID_LOT", "B_EU_FUNDS", "TOP_TYPE", "B_ACCELERATED", "CRIT_CODE",
         "B_ELECTRONIC_AUCTION", "B_AWARDED_TO_A_GROUP", "WIN_COUNTRY_CODE",
-        "B_CONTRACTOR_SME", "B_SUBCONTRACTED"
+        "B_CONTRACTOR_SME", "B_SUBCONTRACTED", "CRIT_CRITERIA", "CRIT_WEIGHTS", "TITLE"
     ])
 
     # 6. Clean categorical
