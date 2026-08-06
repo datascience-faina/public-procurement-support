@@ -22,7 +22,6 @@ from sklearn.decomposition import TruncatedSVD, NMF
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import LabelEncoder
 
-import spacy
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
 stopWords = set(stopwords.words('english'))
@@ -34,76 +33,72 @@ nlp = spacy.load('en_core_web_sm')
 # TEXT CLEANING
 # -----------------------------
 
-def text_cleaner(sentence):
-    if pd.isna(sentence):
-        return ""
-    doc = nlp(sentence)
-    lemma_token = [token.lemma_ for token in doc if token.pos_ != 'PRON']
-    no_stopWords_lemma_token = [token.lower() for token in lemma_token if token not in stopWords]
-    clean_doc = [token for token in no_stopWords_lemma_token if token not in punctuations]
-    joined_clean_doc = " ".join(clean_doc)
-    final_doc = re.sub('[\.\s]+', ' ', joined_clean_doc)
-    return final_doc
+def preprocess_text(df, cols):
+    df["TEXT_ALL"] = df[cols].fillna("").agg(" ".join, axis=1)
 
-def preprocess_text(df, text_cols):
-    df["TEXT_ALL"] = df[text_cols].fillna("").agg(" ".join, axis=1)
-    df["TEXT_ALL"] = df["TEXT_ALL"].apply(text_cleaner)
+    # clear text
+    df["TEXT_ALL"] = (
+        df["TEXT_ALL"]
+        .astype(str)
+        .str.lower()
+        .str.replace(r"[^a-zA-Z0-9\s]", " ", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+
     return df
 
 
 # -----------------------------
 # TF-IDF + SVD FEATURES
 # -----------------------------
-def build_tfidf_svd(texts, n_components=50, max_features=20000):
-    tfidf = TfidfVectorizer(
-        max_features=max_features,
-        ngram_range=(1, 2),
+def build_tfidf_svd(texts, n_components=100):
+    texts = pd.Series(texts).fillna("").astype(str)
+
+    tfidf_vectorizer = TfidfVectorizer(
+        max_df=0.8,
         min_df=5,
-        max_df=0.8
+        max_features=20000,
+        ngram_range=(1, 2),
     )
-    X_tfidf = tfidf.fit_transform(texts)
+    X_tfidf = tfidf_vectorizer.fit_transform(texts)
 
-    svd = TruncatedSVD(n_components=n_components, random_state=42)
-    X_svd = svd.fit_transform(X_tfidf)
+    svd_model = TruncatedSVD(n_components=n_components, random_state=42)
+    X_svd = svd_model.fit_transform(X_tfidf)
 
-    svd_cols = [f"NLP_SVD_{i}" for i in range(n_components)]
-    df_svd = pd.DataFrame(X_svd, columns=svd_cols)
+    df_svd = pd.DataFrame(X_svd, columns=[f"NLP_SVD_{i}" for i in range(n_components)])
 
-    return df_svd, tfidf, svd
+    return df_svd, X_tfidf, tfidf_vectorizer, svd_model
 
 
 # -----------------------------
 # TOPIC MODELLING (NMF)
 # -----------------------------
-def build_nmf_topics(texts, tfidf_vectorizer, n_topics=15):
-    X_tfidf = tfidf_vectorizer.transform(texts)
-
-    nmf = NMF(n_components=n_topics, random_state=42)
-    X_topics = nmf.fit_transform(X_tfidf)
+def build_nmf_topics(tfidf_matrix, n_topics=15):
+    nmf_model = NMF(n_components=n_topics, random_state=42)
+    X_topics = nmf_model.fit_transform(tfidf_matrix)
 
     topic_cols = [f"NLP_TOPIC_{i}" for i in range(n_topics)]
     df_topics = pd.DataFrame(X_topics, columns=topic_cols)
 
-    return df_topics, nmf
+    return df_topics, nmf_model
 
 
 # -----------------------------
 # TEXT RISK CLASSIFIER (SVM)
 # -----------------------------
-def build_text_risk_classifier(texts, risk_labels):
-    le = LabelEncoder()
-    y = le.fit_transform(risk_labels)
+def build_text_risk_classifier(texts, labels):
+    texts = pd.Series(texts).fillna("").astype(str)
+    labels = pd.Series(labels).fillna("unknown").astype(str)
 
-    tfidf = TfidfVectorizer(
-        max_features=30000,
-        ngram_range=(1, 2),
-        min_df=5,
-        max_df=0.8
-    )
-    X = tfidf.fit_transform(texts)
+    tfidf = TfidfVectorizer(max_df=0.8, min_df=5, max_features=20000)
+    X_tfidf = tfidf.fit_transform(texts)
+
+    le = LabelEncoder()
+    y = le.fit_transform(labels)
 
     svm = LinearSVC()
-    svm.fit(X, y)
+    svm.fit(X_tfidf, y)
 
     return svm, tfidf, le
 
