@@ -18,17 +18,26 @@ from pathlib import Path
 
 
 # ---------------------------------------------------------
-# Global save path
+# Global save path (set once)
 # ---------------------------------------------------------
 
-VISUALS_DIR = Path("../visuals")
+visual_eu = Path("../visuals")
+visual_de = Path("../germany_deep_dive")
 
 
-def _save_fig(save, name):
-    """Save figure to ../visuals if save=True."""
+# ---------------------------------------------------------
+# Helper: save figure if requested
+# ---------------------------------------------------------
+
+def _save_fig(save, name, path = visual_eu):
+    """
+    Saves the current matplotlib figure if save=True.
+    Default save location: ../visuals.
+    Custom save path can be provided (e.g., for Germany deep dive).
+    """
     if save:
-        VISUALS_DIR.mkdir(parents=True, exist_ok=True)
-        plt.savefig(VISUALS_DIR / f"{name}.png", dpi=300, bbox_inches="tight")
+        path.mkdir(parents=True, exist_ok=True)
+        plt.savefig(path / f"{name}.png", dpi=300, bbox_inches="tight")
 
 
 # ---------------------------------------------------------
@@ -75,7 +84,7 @@ def mad_outliers(series, threshold=3.5):
 # 4. Visualization helpers (histogram + boxplot)
 # ---------------------------------------------------------
 
-def plot_hist(series, title, save=False, suffix=""):
+def plot_hist(series, title, save=False, path = visual_eu):
     """Histogram with KDE."""
     plt.figure(figsize=(8, 4))
     sns.histplot(series, bins=50, kde=True)
@@ -83,14 +92,12 @@ def plot_hist(series, title, save=False, suffix=""):
     plt.tight_layout()
 
     filename = f"hist_{title.replace(' ', '_')}"
-    if suffix:
-        filename += f"_{suffix}"
 
-    _save_fig(save, filename)
+    _save_fig(save, filename, path)
     plt.show()
 
 
-def plot_box(series, title, save=False, suffix=""):
+def plot_box(series, title, save=False, path = visual_eu):
     """Boxplot for numeric series."""
     plt.figure(figsize=(8, 4))
     sns.boxplot(x=series)
@@ -98,8 +105,6 @@ def plot_box(series, title, save=False, suffix=""):
     plt.tight_layout()
 
     filename = f"box_{title.replace(' ', '_')}"
-    if suffix:
-        filename += f"_{suffix}"
 
-    _save_fig(save, filename)
+    _save_fig(save, filename, path)
     plt.show()
