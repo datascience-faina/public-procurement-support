@@ -36,19 +36,22 @@ def drop_columns(df):
         "B_MULTIPLE_CAE", "B_MULTIPLE_COUNTRY", "B_ON_BEHALF",
         "B_INVOLVES_JOINT_PROCUREMENT",
         "B_FRA_AGREEMENT", "B_FRA_CONTRACT", "FRA_ESTIMATED",
-        "TED_NOTICE_URL", "MAIN_CPV_CODE_GPA", "NUMBER_TENDERS_SME", "NUMBER_TENDERS_OTHER_EU", 
-        "NUMBER_TENDERS_NON_EU", "NUMBER_OFFERS_ELECTR", "AWARD_EST_VALUE_EURO", 
+        "TED_NOTICE_URL", "NUMBER_TENDERS_SME", "NUMBER_TENDERS_OTHER_EU", 
+        "NUMBER_TENDERS_NON_EU", "NUMBER_OFFERS_ELECTR", "AWARD_EST_VALUE_EURO"
     ]
 
-    # B. Irrelevant for analysis
+    # B. Irrelevant for analysis or too match unique categorical values
     irrelevant_cols = [
         "ID_NOTICE_CAN", "ID_AWARD", "ID_LOT_AWARDED",
         "CONTRACT_NUMBER",
         "INFO_ON_NON_AWARD", "INFO_UNPUBLISHED",
-        "MAIN_ACTIVITY", "EU_INST_CODE"
+        "MAIN_ACTIVITY", "EU_INST_CODE",
+        "XSD_VERSION", "ISO_COUNTRY_CODE", "TAL_LOCATION_NUTS", "ID_LOT", "WIN_COUNTRY_CODE", 
+        "CPV_GROUP", "CPV_CLASS", "CPV"
     ]
 
-    cols_to_drop = missing_cols + irrelevant_cols
+
+    cols_to_drop = missing_cols + irrelevant_cols 
     existing = [c for c in cols_to_drop if c in df.columns]
 
     return df.drop(columns=existing).reset_index(drop=True)
@@ -79,6 +82,22 @@ def convert_numeric(df, cols):
             df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
+# ---------------------------------------------------------
+# Memory optimisation
+# ---------------------------------------------------------
+
+def optimize_int_columns(df):
+    for col in df.select_dtypes(include=["int64", "int32"]).columns:
+        col_min = df[col].min()
+        col_max = df[col].max()
+
+        if col_min >= 0 and col_max < 256:
+            df[col] = df[col].astype("int8")
+        elif col_min >= -32768 and col_max < 32768:
+            df[col] = df[col].astype("int16")
+        else:
+            df[col] = df[col].astype("int32")
+    return df
 
 # ---------------------------------------------------------
 # Date conversion
@@ -119,6 +138,7 @@ def fill_categorical_unknown(df):
     df[cat_cols] = df[cat_cols].fillna("Unknown")
     return df
 
+
 # ---------------------------------------------------------
 # Build one TEXT_ALL for NLP
 # ---------------------------------------------------------
@@ -145,29 +165,32 @@ def preprocess(df):
     # 3. Numeric conversion
     df = convert_numeric(df, [
         "VALUE_EURO", "AWARD_VALUE_EURO", "AWARD_EST_VALUE_EURO",
-        "NUMBER_OFFERS", "LOTS_NUMBER", "CRIT_PRICE_WEIGHT"
-    ])
+        "NUMBER_OFFERS", "LOTS_NUMBER", "CRIT_PRICE_WEIGHT"])
 
-    # 4. Date conversion
+    # 4. Optimize memory
+    df = optimize_int_columns(df)
+
+    # 5. Date conversion
     df = convert_dates(df, ["DT_DISPATCH", "DT_AWARD"])
 
-    # 5. Categorical conversion
+    # 6. Categorical conversion
     df = convert_to_string(df, [
-        "ISO_COUNTRY_CODE","CAE_TYPE", "B_AWARDED_BY_CENTRAL_BODY",
-        "TYPE_OF_CONTRACT", "TAL_LOCATION_NUTS", "B_DYN_PURCH_SYST", "CPV",
-        "ID_LOT", "B_EU_FUNDS", "TOP_TYPE", "B_ACCELERATED", "CRIT_CODE",
-        "B_ELECTRONIC_AUCTION", "B_AWARDED_TO_A_GROUP", "WIN_COUNTRY_CODE",
-        "B_CONTRACTOR_SME", "B_SUBCONTRACTED", "CRIT_CRITERIA", "CRIT_WEIGHTS", "TITLE"
-    ])
+        "CAE_TYPE", "B_AWARDED_BY_CENTRAL_BODY",
+        "TYPE_OF_CONTRACT", "B_DYN_PURCH_SYST", "MAIN_CPV_CODE_GPA",
+        "B_EU_FUNDS", "TOP_TYPE", "B_ACCELERATED", "CRIT_CODE",
+        "B_ELECTRONIC_AUCTION", "B_AWARDED_TO_A_GROUP",
+        "B_CONTRACTOR_SME", "B_SUBCONTRACTED", "CRIT_CRITERIA", "CRIT_WEIGHTS", "TITLE"])
 
-    # 6. Clean categorical
+    # 7. Clean categorical
     df = clean_categorical(df)
 
-    # 7. Replace NaN in categorical with "Unknown"
+    # 8. Replace NaN in categorical with "Unknown"
     df = fill_categorical_unknown(df)
 
-    # 8. Build "TEXT_ALL" for NLP
-    df = build_text_all(df, ["TITLE", "CRIT_CRITERIA", "CRIT_WEIGHTS"
-    ])
-   
+    # 9. Build "TEXT_ALL" for NLP
+    df = build_text_all(df, ["TITLE", "CRIT_CRITERIA", "CRIT_WEIGHTS"])
+
+
     return df
+
+

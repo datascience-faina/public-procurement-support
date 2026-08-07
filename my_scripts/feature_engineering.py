@@ -5,13 +5,11 @@ Feature Engineering for TED CAN dataset.
 
 Creates:
     - Date-based features
-    - CPV hierarchy features
-    - Competition features
-    - Value-based bins
-    - Tender complexity features
+    - CPV maping with 12 group
     - Boolean indicators
     - Missing-information flags
-
+Replace:
+    - NaN numeric with mediane
 Removes:
     - Raw columns replaced by engineered features
 """
@@ -21,83 +19,26 @@ import numpy as np
 
 
 # ---------------------------------------------------------
+# Target features
+# ---------------------------------------------------------
+
+def create_target(df):
+    if "NUMBER_OFFERS" in df.columns:
+        df["IS_FAILED_TENDER"] = (df["NUMBER_OFFERS"] <= 1).astype(int)
+
+    return df
+
+# ---------------------------------------------------------
 # Date features
 # ---------------------------------------------------------
 
 def create_date_features(df):
     if "DT_AWARD" in df.columns:
-        df["AWARD_YEAR"] = df["DT_AWARD"].dt.year
         df["AWARD_MONTH"] = df["DT_AWARD"].dt.month
         df["AWARD_QUARTER"] = df["DT_AWARD"].dt.quarter
 
     if "DT_DISPATCH" in df.columns and "DT_AWARD" in df.columns:
         df["DAYS_TO_AWARD"] = (df["DT_AWARD"] - df["DT_DISPATCH"]).dt.days
-
-    return df
-
-
-# ---------------------------------------------------------
-# CPV hierarchy features
-# ---------------------------------------------------------
-
-def create_cpv_features(df):
-    if "CPV" in df.columns:
-        df["CPV_DIVISION"] = df["CPV"].str[:2]
-        df["CPV_GROUP"] = df["CPV"].str[:3]
-        df["CPV_CLASS"] = df["CPV"].str[:4]
-
-    if "MAIN_CPV_CODE_GPA" in df.columns:
-        df["MAIN_CPV_DIVISION"] = df["MAIN_CPV_CODE_GPA"].astype(str).str[:2]
-
-    return df
-
-
-# ---------------------------------------------------------
-# Competition features
-# ---------------------------------------------------------
-
-def create_competition_features(df):
-    if "NUMBER_OFFERS" in df.columns:
-        df["IS_FAILED_TENDER"] = (df["NUMBER_OFFERS"] <= 1).astype(int)
-        df["IS_LOW_COMPETITION"] = (df["NUMBER_OFFERS"] == 2).astype(int)
-
-        df["OFFERS_BIN"] = pd.cut(
-            df["NUMBER_OFFERS"],
-            bins=[-1, 1, 2, 5, 1000],
-            labels=["failed", "low", "medium", "high"]
-        )
-
-    return df
-
-
-# ---------------------------------------------------------
-# Value bins (contract size categories)
-# ---------------------------------------------------------
-
-def create_value_bins(df):
-    if "VALUE_EURO" in df.columns:
-        df["VALUE_BIN"] = pd.cut(
-            df["VALUE_EURO"],
-            bins=[-1, 10000, 100000, 1000000, 10000000, np.inf],
-            labels=["micro", "small", "medium", "large", "mega"]
-        )
-
-    return df
-
-
-# ---------------------------------------------------------
-# Tender complexity features
-# ---------------------------------------------------------
-
-def create_complexity_features(df):
-    if "LOTS_NUMBER" in df.columns:
-        df["HAS_MULTIPLE_LOTS"] = (df["LOTS_NUMBER"] > 1).astype(int)
-
-        df["LOTS_BIN"] = pd.cut(
-            df["LOTS_NUMBER"],
-            bins=[-1, 1, 5, 20, np.inf],
-            labels=["single", "few", "many", "mega"]
-        )
 
     return df
 
@@ -138,9 +79,54 @@ def create_boolean_indicators(df):
 # ---------------------------------------------------------
 
 def create_missing_flags(df):
-    for col in ["VALUE_EURO", "AWARD_VALUE_EURO", "NUMBER_OFFERS"]:
+    for col in ["VALUE_EURO", "AWARD_VALUE_EURO"]:
         if col in df.columns:
             df[f"{col}_MISSING"] = df[col].isna().astype(int)
+
+    return df
+
+# ---------------------------------------------------------
+# Rebuild CVP into 12 group
+# ---------------------------------------------------------
+
+def map_cpv_division_to_category(df):
+    CPV_MAP = {
+        "Construction & Building Works": list(range(45, 47)),   # 45–46
+        "Machinery & Industrial Equipment": list(range(30, 33)),  # 30–32
+        "Electrical, Optical & Precision Equipment": list(range(33, 35)),  # 33–34
+        "IT, Software & Telecommunications": list(range(48, 51)),  # 48–50
+        "Transport Services & Logistics": list(range(60, 64)),  # 60–63
+        "Business, Consulting & Administrative Services": list(range(79, 81)),  # 79–80
+        "Cleaning, Facility & Maintenance Services": list(range(90, 92)),  # 90–91
+        "Energy, Utilities & Environmental Services": list(range(92, 100)),  # 92–99
+    }
+
+    def _map_single_value(cpv_div):
+        try:
+            cpv = int(cpv_div)
+        except:
+            return "Other"   # Unknown or invalid CPV
+
+        for category, values in CPV_MAP.items():
+            if cpv in values:
+                return category
+
+        return "Other"       # CPV not in any defined range
+
+    df["CPV_CATEGORY"] = df["MAIN_CPV_CODE_GPA"].apply(_map_single_value)
+    return df
+
+
+# ---------------------------------------------------------
+# NaN in numerical replace with median
+# ---------------------------------------------------------
+
+def nan_numeric_median(df):
+    numeric_cols = df.select_dtypes(include=["int", "float"]).columns
+
+    for col in numeric_cols:
+        median_val = df[col].median()
+        df[col] = df[col].fillna(median_val)
 
     return df
 
@@ -151,14 +137,9 @@ def create_missing_flags(df):
 
 def drop_redundant_columns(df):
     cols_to_drop = [
-        "CPV",
         "DT_AWARD",
         "DT_DISPATCH",
-        "VALUE_EURO",
-        "AWARD_VALUE_EURO",
-        "AWARD_EST_VALUE_EURO",
-        "LOTS_NUMBER",
-        "NUMBER_OFFERS"
+        "MAIN_CPV_CODE_GPA"
     ]
 
     existing = [c for c in cols_to_drop if c in df.columns]
@@ -168,26 +149,20 @@ def drop_redundant_columns(df):
 
     return df
 
-
 # ---------------------------------------------------------
 # Full feature engineering pipeline
 # ---------------------------------------------------------
 
 def feature_engineering(df):
-
+    df = create_target(df)
     df = create_date_features(df)
-    df = create_cpv_features(df)
-    df = create_competition_features(df)
-    df = create_value_bins(df)
-    df = create_complexity_features(df)
     df = create_boolean_indicators(df)
     df = create_missing_flags(df)
-
+    df = map_cpv_division_to_category(df)
+    df = nan_numeric_median(df)
     df = drop_redundant_columns(df)
 
     return df
-
-
-
+    
 
 

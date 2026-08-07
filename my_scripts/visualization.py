@@ -1,6 +1,4 @@
 # Visualization
-### Visualisierungen
-
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,6 +8,7 @@ from pathlib import Path
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
+from sklearn.metrics import RocCurveDisplay, PrecisionRecallDisplay, confusion_matrix
 
 # seaborn style
 sns.set_theme(style="whitegrid")
@@ -340,4 +339,69 @@ def plot_topic_heatmap(df, save=False, name="topic_heatmap_de"):
     if save:
         _save_fig(save, name, path = visual_de)
 
+    plt.show()
+
+
+
+
+# ---------------------------------------------------------
+# Model Evaluation Plots
+# ---------------------------------------------------------
+
+def plot_roc_curve(model, features_test, target_test, save=False):
+    """
+    ROC curve for binary classifier.
+    """
+    plt.figure(figsize=(7, 5))
+    RocCurveDisplay.from_estimator(model, features_test, target_test)
+    plt.title("ROC Curve")
+    plt.tight_layout()
+    _save_fig(save, "model_roc_curve")
+    plt.show()
+
+
+def plot_pr_curve(model, features_test, target_test, save=False):
+    """
+    Precision-Recall curve.
+    """
+    plt.figure(figsize=(7, 5))
+    PrecisionRecallDisplay.from_estimator(model, features_test, target_test)
+    plt.title("Precision-Recall Curve")
+    plt.tight_layout()
+    _save_fig(save, "model_pr_curve")
+    plt.show()
+
+
+def plot_confusion_matrix(model, features_test, target_test, save=False):
+    """
+    Confusion matrix heatmap.
+    """
+    target_pred = model.predict(features_test)
+    cm = confusion_matrix(target_test, target_pred)
+
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.tight_layout()
+    _save_fig(save, "model_confusion_matrix")
+    plt.show()
+
+
+def plot_feature_importance(model, feature_names, save=False):
+    """
+    Feature importance for tree-based models.
+    """
+    importances = model.named_steps["model"].feature_importances_
+
+    plt.figure(figsize=(10, 8))
+    sns.barplot(
+        x=importances,
+        y=feature_names,
+        orient="h"
+    )
+    plt.title("Feature Importance")
+    plt.tight_layout()
+    _save_fig(save, "model_feature_importance")
     plt.show()

@@ -112,3 +112,21 @@ def predict_text_risk(texts, svm, tfidf, label_encoder):
     X = tfidf.transform(texts)
     preds = svm.predict(X)
     return label_encoder.inverse_transform(preds)
+
+
+def map_risk_from_offers(n):
+    try:
+        n = int(n)
+    except:
+        return "unknown"
+
+    if n <= 1:
+        return "high"
+    elif n == 2:
+        return "medium"
+    elif 3 <= n <= 4:
+        return "medium"
+    elif n >= 5:
+        return "low"
+    else:
+        return "unknown"
