@@ -19,6 +19,13 @@ import re
 import numpy as np
 import pandas as pd
 
+import spacy
+import nltk
+import string
+import re
+
+from nltk.corpus import stopwords
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD, NMF
 from sklearn.svm import LinearSVC

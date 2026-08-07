@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+
+
 # seaborn style
 sns.set_theme(style="whitegrid")
 
@@ -34,8 +38,10 @@ def _save_fig(save, name, path = visual_eu):
 
 
 # ---------------------------------------------------------
-# Target distribution: failed / risk / safe tenders
+# EDA polts
 # ---------------------------------------------------------
+
+# Target distribution: failed / risk / safe tenders
 
 def plot_target_distribution(df, save=False, path=visual_eu):
     """
@@ -81,9 +87,7 @@ def plot_target_distribution(df, save=False, path=visual_eu):
     plt.show()
 
 
-# ---------------------------------------------------------
 # Correlation matrix
-# ---------------------------------------------------------
 
 def plot_correlation_matrix(df, cols=None, save=False, path=visual_eu):
     """
@@ -104,10 +108,7 @@ def plot_correlation_matrix(df, cols=None, save=False, path=visual_eu):
     plt.show()
 
 
-
-# ---------------------------------------------------------
 # Top N countries
-# ---------------------------------------------------------
 
 def plot_bar_top_categories(df, col, top_n=20, save=False, path=visual_eu):
     """Bar chart of top N categories."""
@@ -124,9 +125,12 @@ def plot_bar_top_categories(df, col, top_n=20, save=False, path=visual_eu):
     _save_fig(save, f"bar_top_{col}", path)
     plt.show()
 
+
 # ---------------------------------------------------------
 # Competition EDA plots
 # ---------------------------------------------------------
+
+# plot for offers distributing
 
 def plot_offers_bin_distribution(df, col="OFFERS_BIN", save=False, path=visual_eu):
     """
@@ -142,6 +146,7 @@ def plot_offers_bin_distribution(df, col="OFFERS_BIN", save=False, path=visual_e
     _save_fig(save, "competition_offers_bin", path)
     plt.show()
 
+# plot for country rating
 
 def plot_failed_rate_by_country(df, country_col="ISO_COUNTRY_CODE",
                                 failed_col="IS_FAILED_TENDER",
@@ -165,6 +170,7 @@ def plot_failed_rate_by_country(df, country_col="ISO_COUNTRY_CODE",
     _save_fig(save, "competition_failed_by_country", path)
     plt.show()
 
+# plot for cvp division
 
 def plot_failed_rate_by_cpv_division(df, cpv_col="CPV_DIVISION",
                                      failed_col="IS_FAILED_TENDER",
@@ -188,6 +194,7 @@ def plot_failed_rate_by_cpv_division(df, cpv_col="CPV_DIVISION",
     _save_fig(save, "competition_failed_by_cpv", path)
     plt.show()
 
+# plot for prcedure rating
 
 def plot_failed_rate_by_procedure(df, proc_col="TYPE_OF_CONTRACT",
                                   failed_col="IS_FAILED_TENDER",
@@ -211,7 +218,7 @@ def plot_failed_rate_by_procedure(df, proc_col="TYPE_OF_CONTRACT",
     _save_fig(save, "competition_failed_by_procedure", path)
     plt.show()
 
-
+# plot for time overrating
 def plot_failed_rate_over_time(df, year_col="AWARD_YEAR",
                                failed_col="IS_FAILED_TENDER",
                                save=False, path=visual_eu):
@@ -231,4 +238,106 @@ def plot_failed_rate_over_time(df, year_col="AWARD_YEAR",
     plt.tight_layout()
 
     _save_fig(save, "competition_failed_over_time", path)
+    plt.show()
+
+
+
+# ---------------------------------------------------------
+# Topics for Germany
+# ---------------------------------------------------------
+
+# PCA for German topics
+
+def plot_pca_topics(df, save=False, name="pca_topics_de"):
+    topic_cols = [c for c in df.columns if c.startswith("NLP_TOPIC_")]
+    X_topics = df[topic_cols]
+
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_topics)
+
+    df_pca = pd.DataFrame({
+        "PC1": X_pca[:, 0],
+        "PC2": X_pca[:, 1],
+        "dominant_topic": X_topics.idxmax(axis=1)
+    })
+
+    plt.figure(figsize=(10, 7))
+    sns.scatterplot(
+        data=df_pca,
+        x="PC1",
+        y="PC2",
+        hue="dominant_topic",
+        palette="tab10",
+        alpha=0.6
+    )
+    plt.title("PCA of NMF Topics — Germany")
+
+    if save:
+        _save_fig(save, name, path = visual_de)
+
+    plt.show()
+
+
+
+# KMeans clustering of topics
+
+def plot_kmeans_topics(df, n_clusters=6, save=False, name="kmeans_topics_de"):
+    """
+    KMeans clustering of German NMF topics.
+    """
+    topic_cols = [c for c in df.columns if c.startswith("NLP_TOPIC_")]
+    X_topics = df[topic_cols]
+
+    # Fit KMeans
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    clusters = kmeans.fit_predict(X_topics)
+
+    # PCA for visualization
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_topics)
+
+    df_pca = pd.DataFrame({
+        "PC1": X_pca[:, 0],
+        "PC2": X_pca[:, 1],
+        "cluster": clusters
+    })
+
+    plt.figure(figsize=(10, 7))
+    sns.scatterplot(
+        data=df_pca,
+        x="PC1",
+        y="PC2",
+        hue="cluster",
+        palette="tab10",
+        alpha=0.6
+    )
+    plt.title(f"KMeans Clusters ({n_clusters}) — Germany")
+
+    if save:
+        _save_fig(save, name, path = visual_de)
+
+    plt.show()
+
+
+# Heatmap of topic correlations
+
+def plot_topic_heatmap(df, save=False, name="topic_heatmap_de"):
+    """
+    Correlation heatmap of NMF topics for Germany.
+    """
+    topic_cols = [c for c in df.columns if c.startswith("NLP_TOPIC_")]
+    X_topics = df[topic_cols]
+
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(
+        X_topics.corr(),
+        cmap="coolwarm",
+        center=0,
+        linewidths=0.5
+    )
+    plt.title("Correlation Heatmap of NMF Topics — Germany")
+
+    if save:
+        _save_fig(save, name, path = visual_de)
+
     plt.show()
