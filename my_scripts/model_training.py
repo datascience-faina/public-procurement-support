@@ -1,9 +1,9 @@
-# 3. Model training
+# Model training
 ### Training von ML‑Modellen
 
 
 """
-3_model_training.py
+model_training.py
 -----------------------------------------
 Training von ML-Modellen für Wettbewerb und Effizienz.
 """

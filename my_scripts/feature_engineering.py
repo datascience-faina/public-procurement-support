@@ -162,7 +162,11 @@ def drop_redundant_columns(df):
     ]
 
     existing = [c for c in cols_to_drop if c in df.columns]
-    return df.drop(columns=existing)
+
+    # Drop redundant columns 
+    df = df.drop(columns=existing).reset_index(drop=True)
+
+    return df
 
 
 # ---------------------------------------------------------

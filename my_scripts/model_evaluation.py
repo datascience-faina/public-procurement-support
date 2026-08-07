@@ -1,11 +1,8 @@
-# 4. Model Evaluation
-### Modellbewertung
+# Model Evaluation
 
 
 """
-4_model_evaluation.py
------------------------------------------
-Bewertung von ML-Modellen.
+
 """
 
 from sklearn.metrics import mean_absolute_error, r2_score

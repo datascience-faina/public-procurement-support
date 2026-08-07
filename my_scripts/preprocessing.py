@@ -51,7 +51,7 @@ def drop_columns(df):
     cols_to_drop = missing_cols + irrelevant_cols
     existing = [c for c in cols_to_drop if c in df.columns]
 
-    return df.drop(columns=existing)
+    return df.drop(columns=existing).reset_index(drop=True)
 
 
 # ---------------------------------------------------------
@@ -110,7 +110,6 @@ def clean_categorical(df):
 
     return df
 
-
 # ---------------------------------------------------------
 # Replace NaN in categorical columns with "Unknown"
 # ---------------------------------------------------------
@@ -120,6 +119,15 @@ def fill_categorical_unknown(df):
     df[cat_cols] = df[cat_cols].fillna("Unknown")
     return df
 
+# ---------------------------------------------------------
+# Build one TEXT_ALL for NLP
+# ---------------------------------------------------------
+
+def build_text_all(df, cols):
+    df[cols] = df[cols].fillna(" ").astype(str)
+    df["TEXT_ALL"] = df[cols].agg(" ".join, axis=1)
+    df = df.drop(columns=cols).reset_index(drop=True)
+    return df
 
 
 # ---------------------------------------------------------
@@ -158,5 +166,8 @@ def preprocess(df):
     # 7. Replace NaN in categorical with "Unknown"
     df = fill_categorical_unknown(df)
 
+    # 8. Build "TEXT_ALL" for NLP
+    df = build_text_all(df, ["TITLE", "CRIT_CRITERIA", "CRIT_WEIGHTS"
+    ])
    
     return df

@@ -1,21 +1,23 @@
-# 5. NLP processing
-### NLP für Titel, Losbeschreibung, Kriterien
-
+# NLP processing
 
 """
-5_nlp_processing.py
------------------------------------------
-NLP-Pipeline für TED-Textfelder.
+NLP processing for TED CAN text fields.
+
+Creates:
+    - Combined text field (TITLE, CRIT_CRITERIA, CRIT_WEIGHTS)
+    - TF-IDF representations
+    - SVD (LSA) semantic components
+    - NMF topic features
+    - Text-based risk classifier (SVM)
+    - Text risk scores and optional probabilities
+
+Removes:
+    - Raw text columns replaced by engineered NLP features
 """
 
 import re
 import numpy as np
 import pandas as pd
-
-from nltk.corpus import stopwords
-import string
-import spacy
-import re
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD, NMF
@@ -28,24 +30,20 @@ stopWords = set(stopwords.words('english'))
 punctuations = string.punctuation
 nlp = spacy.load('en_core_web_sm')
 
-
 # -----------------------------
 # TEXT CLEANING
 # -----------------------------
 
-def preprocess_text(df, cols):
-    df["TEXT_ALL"] = df[cols].fillna("").agg(" ".join, axis=1)
-
-    # clear text
-    df["TEXT_ALL"] = (
-        df["TEXT_ALL"]
-        .astype(str)
-        .str.lower()
-        .str.replace(r"[^a-zA-Z0-9\s]", " ", regex=True)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip()
-    )
-
+def text_preproceccing(df, cols):
+   
+    for c in cols:
+        df[c] = (
+            df[c]
+            .str.lower()
+            .str.replace(r"[^a-z0-9\s]", " ", regex=True)
+            .str.replace(r"\s+", " ", regex=True)
+            .str.strip()
+        )
     return df
 
 
