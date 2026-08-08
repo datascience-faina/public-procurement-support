@@ -46,9 +46,7 @@ def create_date_features(df):
 # ---------------------------------------------------------
 
 def create_missing_flags(df):
-    for col in ["VALUE_EURO", "CRIT_PRICE_WEIGHT"]:
-        if col in df.columns:
-            df[f"{col}_MISSING"] = df[col].isna().astype(int)
+    df["CRIT_PRICE_WEIGHT"] = df["CRIT_PRICE_WEIGHT"].isna().astype(int)
 
     return df
 
