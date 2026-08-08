@@ -389,19 +389,29 @@ def plot_confusion_matrix(model, features_test, target_test, save=False):
     plt.show()
 
 
-def plot_feature_importance(model, feature_names, save=False):
-    """
-    Feature importance for tree-based models.
-    """
-    importances = model.named_steps["model"].feature_importances_
+def plot_feature_importance(pipeline, feature_names, top_n=20, save=True):
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    # Extract LR model from pipeline
+    lr = pipeline.named_steps["model"]
+
+    coefs = lr.coef_[0]
+    importance = np.abs(coefs)
+
+    df_imp = pd.DataFrame({
+        "feature": feature_names,
+        "importance": importance
+    }).sort_values("importance", ascending=False).head(top_n)
 
     plt.figure(figsize=(10, 8))
-    sns.barplot(
-        x=importances,
-        y=feature_names,
-        orient="h"
-    )
-    plt.title("Feature Importance")
+    plt.barh(df_imp["feature"], df_imp["importance"])
+    plt.gca().invert_yaxis()
+    plt.title("Logistic Regression Feature Importance")
+    plt.xlabel("Coefficient Magnitude")
     plt.tight_layout()
-    _save_fig(save, "model_feature_importance")
+    _save_fig(save, "feature_importance", path=visual_eu)
     plt.show()
+
+    return df_imp

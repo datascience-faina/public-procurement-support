@@ -34,52 +34,19 @@ def create_target(df):
 
 def create_date_features(df):
     if "DT_AWARD" in df.columns:
-        df["AWARD_MONTH"] = df["DT_AWARD"].dt.month
         df["AWARD_QUARTER"] = df["DT_AWARD"].dt.quarter
 
     if "DT_DISPATCH" in df.columns and "DT_AWARD" in df.columns:
-        df["DAYS_TO_AWARD"] = (df["DT_AWARD"] - df["DT_DISPATCH"]).dt.days
+        df["DAYS_TO_AWARD"] = (df["DT_DISPATCH"] - df["DT_AWARD"]).dt.days
 
     return df
-
-
-# ---------------------------------------------------------
-# Boolean indicators
-# ---------------------------------------------------------
-
-def create_boolean_indicators(df):
-    # mapping for typical Y/N flags
-    yn_map = {
-        "Y": 1,
-        "N": 0,
-        "nan": 0,   
-        "None": 0,
-        "UNKNOWN": 0
-    }
-
-    for col in [
-        "B_ELECTRONIC_AUCTION",
-        "B_DYN_PURCH_SYST",
-        "B_ACCELERATED",
-        "B_AWARDED_TO_A_GROUP",
-        "B_CONTRACTOR_SME"
-    ]:
-        if col in df.columns:
-            # format into string
-            df[col] = df[col].astype(str).str.strip()
-
-            # transformation Y/N into 1/0
-            df[col] = df[col].map(yn_map).fillna(0).astype(int)
-
-    return df
-
 
 # ---------------------------------------------------------
 # Missing-information flags
 # ---------------------------------------------------------
 
 def create_missing_flags(df):
-    for col in ["VALUE_EURO", "AWARD_VALUE_EURO"]:
+    for col in ["VALUE_EURO", "CRIT_PRICE_WEIGHT"]:
         if col in df.columns:
             df[f"{col}_MISSING"] = df[col].isna().astype(int)
 
@@ -116,6 +83,34 @@ def map_cpv_division_to_category(df):
     df["CPV_CATEGORY"] = df["MAIN_CPV_CODE_GPA"].apply(_map_single_value)
     return df
 
+# ---------------------------------------------------------
+# Rebuild CAE Type
+# ---------------------------------------------------------
+
+def map_cae_type(df):
+    mapping = {
+        "1": "Ministry",
+        "3": "National Agency",
+        "4": "Regional/Local Authority",
+        "5": "Regional/Local Agency",
+        "5A": "Local Agency",
+        "6": "Public Body",
+        "8": "Public Undertaking",
+        "N": "Not Specified",
+        "R": "Other Public Authority",
+        "Z": "Unknown"
+    }
+
+    df["CAE_TYPE_CATEGORY"] = (
+        df["CAE_TYPE"]
+        .astype(str)
+        .str.strip()
+        .map(mapping)
+        .fillna("Unknown")
+    )
+
+    return df
+
 
 # ---------------------------------------------------------
 # NaN in numerical replace with median
@@ -136,11 +131,8 @@ def nan_numeric_median(df):
 # ---------------------------------------------------------
 
 def drop_redundant_columns(df):
-    cols_to_drop = [
-        "DT_AWARD",
-        "DT_DISPATCH",
-        "MAIN_CPV_CODE_GPA"
-    ]
+    cols_to_drop = ["DT_AWARD", "DT_DISPATCH",
+        "MAIN_CPV_CODE_GPA", "CAE_TYPE"]
 
     existing = [c for c in cols_to_drop if c in df.columns]
 
@@ -156,13 +148,43 @@ def drop_redundant_columns(df):
 def feature_engineering(df):
     df = create_target(df)
     df = create_date_features(df)
-    df = create_boolean_indicators(df)
     df = create_missing_flags(df)
     df = map_cpv_division_to_category(df)
+    df = map_cae_type(df)
     df = nan_numeric_median(df)
     df = drop_redundant_columns(df)
 
     return df
+
+
+
+# ---------------------------------------------------------
+# Maping for Topics (NLP)
+# ---------------------------------------------------------
+
+def create_topic_id(df):
+    topic_cols = [f"NLP_TOPIC_{i}" for i in range(15)]
+    df["TOPIC_ID"] = df[topic_cols].idxmax(axis=1).str.replace("NLP_TOPIC_", "").astype(int)
+    return df
+
+def map_topic_name(df):
+    topic_mapping = {
+        0: "Lot / Position Structure",
+        1: "Pharmaceuticals (General, Oncology, Psychotropic)",
+        2: "Works, Services and Supplies",
+        3: "Tasks and Lots",
+        4: "Procurement Packages",
+        5: "Product / Service Groups",
+        6: "Medical Devices and Pharmaceuticals",
+        7: "Lot Selection",
+        8: "Public Utility / Municipal Services",
+        9: "Cardiovascular & Neurological Medicines",
+        10: "Procurement Parts / Segments",
+        11: "Equipment, Services, Framework Agreements",
+        12: "Laboratory Materials and Reagents",
+        13: "Maintenance, Risks, Technical Services",
+        14: "Technical / IT / System Services"
+    }
     
-
-
+    df["TOPIC_NAME"] = df["TOPIC_ID"].map(topic_mapping).fillna("Unknown")
+    return df

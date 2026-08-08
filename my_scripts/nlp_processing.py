@@ -4,7 +4,6 @@
 NLP processing for TED CAN text fields.
 
 Creates:
-    - Combined text field (TITLE, CRIT_CRITERIA, CRIT_WEIGHTS)
     - TF-IDF representations
     - SVD (LSA) semantic components
     - NMF topic features

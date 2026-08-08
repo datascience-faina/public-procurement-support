@@ -9,7 +9,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, f1_score, roc_auc_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-
+from sklearn.linear_model import LogisticRegression
 
 # ---------------------------------------------------------
 # Categorical features encoding
@@ -95,7 +95,7 @@ def tune_logreg(features_train, target_train):
         pipe,
         param_grid,
         scoring="f1",
-        cv=5,
+        cv=2,
         n_jobs=-1
     )
 

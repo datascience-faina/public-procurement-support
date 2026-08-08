@@ -20,41 +20,36 @@ import numpy as np
 
 
 # ---------------------------------------------------------
-# Drop columns with >40% missing OR irrelevant for analysis
+# Drop irrelevante rows  
 # ---------------------------------------------------------
+# Drop irrelevant tenders
+def drop_tenders(df):
 
-def drop_columns(df):
+    # cancelled tenders
+    df = df[df["CANCELLED"] == 0].reset_index(drop=True)
 
-    # A. Missing >40%
-    missing_cols = [
-        "WIN_NAME", "WIN_ADDRESS", "WIN_TOWN", "WIN_POSTAL_CODE", "WIN_NATIONALID",
-        "CAE_NAME", "CAE_ADDRESS", "CAE_TOWN", "CAE_POSTAL_CODE", "CAE_NATIONALID",
-        "CAE_GPA_ANNEX",
-        "GPA_COVERAGE", "ISO_COUNTRY_CODE_GPA", "ISO_COUNTRY_CODE_ALL", "B_GPA",
-        "VALUE_EURO_FIN_1", "VALUE_EURO_FIN_2", "AWARD_VALUE_EURO_FIN_1",
-        "ADDITIONAL_CPVS",
-        "B_MULTIPLE_CAE", "B_MULTIPLE_COUNTRY", "B_ON_BEHALF",
-        "B_INVOLVES_JOINT_PROCUREMENT",
-        "B_FRA_AGREEMENT", "B_FRA_CONTRACT", "FRA_ESTIMATED",
-        "TED_NOTICE_URL", "NUMBER_TENDERS_SME", "NUMBER_TENDERS_OTHER_EU", 
-        "NUMBER_TENDERS_NON_EU", "NUMBER_OFFERS_ELECTR", "AWARD_EST_VALUE_EURO"
-    ]
+    # missing information on the number of offers
+    df = df[df["NUMBER_OFFERS"].notna()].reset_index(drop=True)
 
-    # B. Irrelevant for analysis or too match unique categorical values
-    irrelevant_cols = [
-        "ID_NOTICE_CAN", "ID_AWARD", "ID_LOT_AWARDED",
-        "CONTRACT_NUMBER",
-        "INFO_ON_NON_AWARD", "INFO_UNPUBLISHED",
-        "MAIN_ACTIVITY", "EU_INST_CODE",
-        "XSD_VERSION", "TAL_LOCATION_NUTS", "ID_LOT", "WIN_COUNTRY_CODE", 
-        "CPV_GROUP", "CPV_CLASS", "CPV"
-    ]
+    # unrealistic number of proposals
+    df = df[(df["NUMBER_OFFERS"] <= 100) |
+    (df["AWARD_VALUE_EURO"].isna())].copy().reset_index(drop=True)
 
+    return df
 
-    cols_to_drop = missing_cols + irrelevant_cols 
-    existing = [c for c in cols_to_drop if c in df.columns]
+# ---------------------------------------------------------
+# Choice relevante columns 
+# ---------------------------------------------------------
+# Keep columns relevant for analysis
+def keep_columns(df):
 
-    return df.drop(columns=existing).reset_index(drop=True)
+    # Column for keeping
+    keep_cols = ["YEAR", "ISO_COUNTRY_CODE", "CAE_TYPE", "TYPE_OF_CONTRACT", "TOP_TYPE", "MAIN_CPV_CODE_GPA", 
+                 "VALUE_EURO", "CRIT_PRICE_WEIGHT", "NUMBER_OFFERS", "DT_DISPATCH", "DT_AWARD", "TITLE"]
+
+    df = df[keep_cols].reset_index(drop=True)
+
+    return df
 
 
 # ---------------------------------------------------------
@@ -140,56 +135,29 @@ def fill_categorical_unknown(df):
 
 
 # ---------------------------------------------------------
-# Build one TEXT_ALL for NLP
-# ---------------------------------------------------------
-
-def build_text_all(df, cols):
-    df[cols] = df[cols].fillna(" ").astype(str)
-    df["TEXT_ALL"] = df[cols].agg(" ".join, axis=1)
-    df = df.drop(columns=cols).reset_index(drop=True)
-    return df
-
-
-# ---------------------------------------------------------
 # Full preprocessing pipeline
 # ---------------------------------------------------------
 
 def preprocess(df):
 
-    # 1. Drop columns
-    df = drop_columns(df)
+    df = drop_tenders(df)
 
-    # 2. Clean column names
+    df = keep_columns(df)
+
     df = clean_columns(df)
 
-    # 3. Numeric conversion
-    df = convert_numeric(df, [
-        "VALUE_EURO", "AWARD_VALUE_EURO", "AWARD_EST_VALUE_EURO",
-        "NUMBER_OFFERS", "LOTS_NUMBER", "CRIT_PRICE_WEIGHT"])
+    df = convert_numeric(df, ["VALUE_EURO", "NUMBER_OFFERS", "CRIT_PRICE_WEIGHT"])
 
-    # 4. Optimize memory
     df = optimize_int_columns(df)
 
-    # 5. Date conversion
     df = convert_dates(df, ["DT_DISPATCH", "DT_AWARD"])
 
-    # 6. Categorical conversion
-    df = convert_to_string(df, [
-        "CAE_TYPE", "B_AWARDED_BY_CENTRAL_BODY",
-        "TYPE_OF_CONTRACT", "B_DYN_PURCH_SYST", "MAIN_CPV_CODE_GPA",
-        "B_EU_FUNDS", "TOP_TYPE", "B_ACCELERATED", "CRIT_CODE",
-        "B_ELECTRONIC_AUCTION", "B_AWARDED_TO_A_GROUP",
-        "B_CONTRACTOR_SME", "B_SUBCONTRACTED", "CRIT_CRITERIA", "CRIT_WEIGHTS", "TITLE"])
-
-    # 7. Clean categorical
+    df = convert_to_string(df, ["ISO_COUNTRY_CODE", "CAE_TYPE", "TYPE_OF_CONTRACT", "MAIN_CPV_CODE_GPA",
+        "TOP_TYPE", "TITLE"])
+    
     df = clean_categorical(df)
 
-    # 8. Replace NaN in categorical with "Unknown"
     df = fill_categorical_unknown(df)
-
-    # 9. Build "TEXT_ALL" for NLP
-    df = build_text_all(df, ["TITLE", "CRIT_CRITERIA", "CRIT_WEIGHTS"])
-
 
     return df
 
