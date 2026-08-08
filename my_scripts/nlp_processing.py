@@ -41,8 +41,7 @@ nlp = spacy.load('en_core_web_sm')
 # TEXT CLEANING
 # -----------------------------
 
-def text_preproceccing(df, cols):
-   
+def text_preprocessing(df, cols):
     for c in cols:
         df[c] = (
             df[c]
@@ -50,8 +49,13 @@ def text_preproceccing(df, cols):
             .str.replace(r"[^a-z0-9\s]", " ", regex=True)
             .str.replace(r"\s+", " ", regex=True)
             .str.strip()
+            .str.replace(r"\bunknown\b", "", regex=True)   # remove 'unknown'
+            .str.replace(r"\s+", " ", regex=True)          # clean extra spaces again
+            .str.strip()
         )
     return df
+
+
 
 
 # -----------------------------
