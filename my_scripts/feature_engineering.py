@@ -204,6 +204,14 @@ def drop_redundant_columns(df):
 # Memory optimisation
 # ---------------------------------------------------------
 
+# round and convert float into int
+def optimize_float_columns(df, cols_to_int):
+    for col in cols_to_int:
+        df[col] = df[col].round().astype("int32")
+
+    return df
+
+
 def optimize_int_columns(df):
     for col in df.select_dtypes(include=["int64", "int32"]).columns:
         col_min = df[col].min()
@@ -216,6 +224,9 @@ def optimize_int_columns(df):
         else:
             df[col] = df[col].astype("int32")
     return df
+
+
+
 
 
 # ---------------------------------------------------------
@@ -235,7 +246,11 @@ def feature_engineering(df):
 
     df = nan_numeric_median(df)
 
+    cols_to_int = ["CRIT_PRICE_WEIGHT", "NUMBER_OFFERS", "DAYS_TO_AWARD", "AWARD_QUARTER"]
+    df = optimize_float_columns(df, cols_to_int)
+
     df = optimize_int_columns(df)
+
 
     df = drop_redundant_columns(df)
 

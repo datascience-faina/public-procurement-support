@@ -26,24 +26,6 @@ def convert_numeric(df, cols):
 
 
 # ---------------------------------------------------------
-# Memory optimisation
-# ---------------------------------------------------------
-
-def optimize_int_columns(df):
-    for col in df.select_dtypes(include=["int64", "int32"]).columns:
-        col_min = df[col].min()
-        col_max = df[col].max()
-
-        if col_min >= 0 and col_max < 256:
-            df[col] = df[col].astype("int8")
-        elif col_min >= -32768 and col_max < 32768:
-            df[col] = df[col].astype("int16")
-        else:
-            df[col] = df[col].astype("int32")
-    return df
-
-
-# ---------------------------------------------------------
 # Categorical & text conversion
 # ---------------------------------------------------------
 
@@ -121,6 +103,27 @@ def drop_unrealistic_value(df, max_realistic=10000000000):
 
 
 # ---------------------------------------------------------
+# Memory optimisation
+# ---------------------------------------------------------
+
+def optimize_int_columns(df):
+
+    downcast to smallest possible int type
+    for col in df.select_dtypes(include=["int32", "int64"]).columns:
+        col_min = df[col].min()
+        col_max = df[col].max()
+
+        if col_min >= 0 and col_max < 256:
+            df[col] = df[col].astype("int8")
+        elif col_min >= -32768 and col_max < 32768:
+            df[col] = df[col].astype("int16")
+        else:
+            df[col] = df[col].astype("int32")
+
+    return df
+
+
+# ---------------------------------------------------------
 # Clean column names
 # ---------------------------------------------------------
 
@@ -146,7 +149,6 @@ def preprocess(df):
 
     # --- Convert numeric ---
     df = convert_numeric(df, ["AWARD_VALUE_EURO", "NUMBER_OFFERS", "CRIT_PRICE_WEIGHT"])
-    df = optimize_int_columns(df)
 
     # --- Convert categorical ---
     df = convert_to_string(df, ["ISO_COUNTRY_CODE", "CAE_TYPE", "TYPE_OF_CONTRACT",
@@ -172,15 +174,13 @@ def preprocess(df):
     # --- Remove zero award values ---
     df = df[df["AWARD_VALUE_EURO"] > 0]
 
-    # ---------------------------------------------------------
-    # Keep relevant columns
-    # ---------------------------------------------------------
+
     keep_cols = [
         "YEAR", "ISO_COUNTRY_CODE", "CAE_TYPE", "TYPE_OF_CONTRACT", "TOP_TYPE",
         "CPV", "MAIN_CPV_CODE_GPA", "AWARD_VALUE_EURO", "CRIT_PRICE_WEIGHT",
         "NUMBER_OFFERS", "DT_DISPATCH", "DT_AWARD", "TITLE", "CRIT_WEIGHTS"
     ]
-
     df = df[keep_cols].reset_index(drop=True)
+
 
     return df
