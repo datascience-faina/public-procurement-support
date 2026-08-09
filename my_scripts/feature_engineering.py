@@ -5,11 +5,17 @@ Feature Engineering for TED CAN dataset.
 
 Creates:
     - Date-based features
-    - CPV maping with 12 group
+    - CPV_CATEGORY (from CPV)
+    - Reconstructed CRIT_PRICE_WEIGHT (from CRIT_WEIGHTS)
+    - CPV 12-group mapping
     - Boolean indicators
     - Missing-information flags
+    - CAE_TYPE_CATEGORY
+    - Target features
+
 Replace:
-    - NaN numeric with mediane
+    - NaN numeric with median
+
 Removes:
     - Raw columns replaced by engineered features
 """
@@ -25,36 +31,89 @@ import numpy as np
 def create_target(df):
     if "NUMBER_OFFERS" in df.columns:
         df["IS_FAILED_TENDER"] = (df["NUMBER_OFFERS"] <= 1).astype(int)
-
     return df
+
 
 # ---------------------------------------------------------
 # Date features
 # ---------------------------------------------------------
 
 def create_date_features(df):
+
+    # Award quarter
     if "DT_AWARD" in df.columns:
         df["AWARD_QUARTER"] = df["DT_AWARD"].dt.quarter
 
+    # Days to award (with logical constraints)
     if "DT_DISPATCH" in df.columns and "DT_AWARD" in df.columns:
+
+        # raw difference
         df["DAYS_TO_AWARD"] = (df["DT_DISPATCH"] - df["DT_AWARD"]).dt.days
 
+        # indicator for missing/unrealistic values
+        df["DAYS_TO_AWARD_MISSING"] = 0
+
+        # unrealistic negative values
+        neg_mask = df["DAYS_TO_AWARD"] < 0
+
+        # unrealistic long durations (> 5 years)
+        long_mask = df["DAYS_TO_AWARD"] > 1825   # 5 years = 1825 days
+
+        # mark missing
+        df.loc[neg_mask | long_mask, "DAYS_TO_AWARD_MISSING"] = 1
+
+        # set unrealistic values to NaN
+        df.loc[neg_mask | long_mask, "DAYS_TO_AWARD"] = np.nan
+
     return df
+
 
 # ---------------------------------------------------------
 # Missing-information flags
 # ---------------------------------------------------------
 
 def create_missing_flags(df):
-    df["CRIT_PRICE_WEIGHT"] = df["CRIT_PRICE_WEIGHT"].isna().astype(int)
+    df["CRIT_PRICE_WEIGHT_MISSING"] = df["CRIT_PRICE_WEIGHT"].isna().astype(int)
+    return df
+
+
+# ---------------------------------------------------------
+# CPV CATEGORY reconstruction (from CPV)
+# ---------------------------------------------------------
+
+def create_cpv_category(df):
+    df = df[df["CPV"].notna()]
+    df["CPV_CATEGORY"] = df["CPV"].str[:2]
+    return df
+
+
+# ---------------------------------------------------------
+# CRIT_PRICE_WEIGHT reconstruction
+# ---------------------------------------------------------
+
+def reconstruct_crit_price_weight(df):
+
+    # Convert to numeric
+    df["CRIT_PRICE_WEIGHT"] = pd.to_numeric(df["CRIT_PRICE_WEIGHT"], errors="coerce")
+
+    # Reconstruct from CRIT_WEIGHTS
+    if "CRIT_WEIGHTS" in df.columns:
+        extracted = df["CRIT_WEIGHTS"].str.extract(r"^(\d{1,3})")
+        extracted = pd.to_numeric(extracted[0], errors="coerce")
+        df.loc[df["CRIT_PRICE_WEIGHT"].isna(), "CRIT_PRICE_WEIGHT"] = extracted
+
+    # Remove unrealistic values
+    df = df[df["CRIT_PRICE_WEIGHT"].isna() | (df["CRIT_PRICE_WEIGHT"] <= 100)]
 
     return df
 
+
 # ---------------------------------------------------------
-# Rebuild CVP into 12 group
+# CPV 12-group mapping (based on CPV_CATEGORY)
 # ---------------------------------------------------------
 
 def map_cpv_division_to_category(df):
+
     CPV_MAP = {
         "Construction & Building Works": list(range(45, 47)),   # 45–46
         "Machinery & Industrial Equipment": list(range(30, 33)),  # 30–32
@@ -70,19 +129,20 @@ def map_cpv_division_to_category(df):
         try:
             cpv = int(cpv_div)
         except:
-            return "Other"   # Unknown or invalid CPV
+            return "Other"
 
         for category, values in CPV_MAP.items():
             if cpv in values:
                 return category
 
-        return "Other"       # CPV not in any defined range
+        return "Other"
 
-    df["CPV_CATEGORY"] = df["MAIN_CPV_CODE_GPA"].apply(_map_single_value)
+    df["CPV_GROUP"] = df["CPV_CATEGORY"].apply(_map_single_value)
     return df
 
+
 # ---------------------------------------------------------
-# Rebuild CAE Type
+# CAE_TYPE mapping
 # ---------------------------------------------------------
 
 def map_cae_type(df):
@@ -99,7 +159,7 @@ def map_cae_type(df):
         "Z": "Unknown"
     }
 
-    df["CAE_TYPE_CATEGORY"] = (
+    df["CAE_CATEGORY"] = (
         df["CAE_TYPE"]
         .astype(str)
         .str.strip()
@@ -129,27 +189,54 @@ def nan_numeric_median(df):
 # ---------------------------------------------------------
 
 def drop_redundant_columns(df):
-    cols_to_drop = ["DT_AWARD", "DT_DISPATCH",
-        "MAIN_CPV_CODE_GPA", "CAE_TYPE"]
+    cols_to_drop = [
+        "DT_AWARD", "DT_DISPATCH",
+        "MAIN_CPV_CODE_GPA", "CAE_TYPE",
+        "CRIT_WEIGHTS", "CPV", "CPV_CATEGORY"
+    ]
 
     existing = [c for c in cols_to_drop if c in df.columns]
-
-    # Drop redundant columns 
     df = df.drop(columns=existing).reset_index(drop=True)
 
     return df
+
+# ---------------------------------------------------------
+# Memory optimisation
+# ---------------------------------------------------------
+
+def optimize_int_columns(df):
+    for col in df.select_dtypes(include=["int64", "int32"]).columns:
+        col_min = df[col].min()
+        col_max = df[col].max()
+
+        if col_min >= 0 and col_max < 256:
+            df[col] = df[col].astype("int8")
+        elif col_min >= -32768 and col_max < 32768:
+            df[col] = df[col].astype("int16")
+        else:
+            df[col] = df[col].astype("int32")
+    return df
+
 
 # ---------------------------------------------------------
 # Full feature engineering pipeline
 # ---------------------------------------------------------
 
 def feature_engineering(df):
+
     df = create_target(df)
     df = create_date_features(df)
     df = create_missing_flags(df)
+
+    df = create_cpv_category(df)
+    df = reconstruct_crit_price_weight(df)
     df = map_cpv_division_to_category(df)
     df = map_cae_type(df)
+
     df = nan_numeric_median(df)
+
+    df = optimize_int_columns(df)
+
     df = drop_redundant_columns(df)
 
     return df
